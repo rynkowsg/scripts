@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=SC2155
+
+# https://support.atlassian.com/bitbucket-cloud/docs/set-up-an-ssh-key/
+# https://confluence.atlassian.com/bitbucketserver/creating-ssh-keys-776639788.html
+
+function generate_ssh_keys {
+  # TODO: add 'if "$HOME/.ssh/id_rsa.pub"' skip the process
+
+  # Hack providing username on both Solaris and Linux:
+  # https://stackoverflow.com/a/25118029
+  # alternatively on MacOS I could use `whoami` or just `$USER`,
+  # but I think this method is better
+  local username="$(ps -o user= -p $$ | awk '{print $1}')"
+
+  local host="$(hostname)"
+  local time="$(date "+%Y%m%d_%H%m%S")"
+
+  ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -C "${username}@${host}_${time}"
+
+  cat "$HOME/.ssh/id_rsa.pub" | pbcopy
+  printf "Public key copied to clipboard.\n"
+}
+
+function remove_ssh_keys {
+  rm "$HOME/.ssh/id_rsa" "$HOME/.ssh/id_rsa.pub"
+}
+
+printf "Loaded: %s\n" "${BASH_SOURCE[0]}"
