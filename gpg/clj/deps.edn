@@ -1,0 +1,30 @@
+{:paths   ["src"]
+ :deps    {org.clojure/clojure {:mvn/version "1.10.3"}
+           ; https://funcool.github.io/fs/latest/api/me.raynes.fs.html
+           clj-commons/fs      {:mvn/version "1.6.307"}}
+
+ :aliases {:dev       {:extra-paths ["dev"]
+                       :extra-deps  {babashka/babashka       {:mvn/version "0.4.6"}
+                                     expound/expound         {:mvn/version "0.8.9"}
+                                     speculative/speculative {:mvn/version "0.0.3"}
+                                     orchestra/orchestra     {:mvn/version "2021.01.01-1"}
+                                     fipp/fipp               {:mvn/version "0.6.23"}
+                                     hawk/hawk               {:mvn/version "0.2.11"}
+                                     integrant/repl          {:mvn/version "0.3.2"}
+                                     eftest/eftest           {:mvn/version "0.5.9"}}}
+
+           ;; List dependencies that have new available versions.
+           :antq      {:replace-paths []
+                       :replace-deps  {com.github.liquidz/antq {:mvn/version "0.15.3"}}}
+
+           ;; Launch an excellent readline REPL (with nREPL)
+           :rebel     {:extra-deps {nrepl/nrepl                {:mvn/version "0.8.3"}
+                                    com.bhauman/rebel-readline {:mvn/version "0.1.4"}}
+                       :main-opts  ["--main" "nrepl.cmdline"
+                                    "--interactive"
+                                    "--repl-fn" "rebel-readline.main/-main"]}
+
+           :clj-kondo {:replace-deps {clj-kondo/clj-kondo {:mvn/version "RELEASE"}}
+                       :main-opts    ["-m" "clj-kondo.main"]}
+
+           :cljfmt    {:replace-deps {cljfmt/cljfmt {:mvn/version "0.8.0"}}}}}

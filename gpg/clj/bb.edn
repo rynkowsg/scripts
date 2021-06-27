@@ -1,0 +1,19 @@
+{:min-bb-version "0.4.3"
+ :paths          ["scripts" "src"]
+ :tasks          {:requires          ([bb-helper :refer [print-exec]]
+                                      [clojure.string :refer [join]])
+                  ; dev
+                  ; TODO: try to replace print-exec by using :enter and (current-task)
+                  deps               (print-exec '(clojure "-M:antq -m antq.core") *command-line-args*)
+                  deps-upgrade       (shell "bb deps --upgrade")
+                  format             (print-exec '(clojure "-M:cljfmt -m cljfmt.main"
+                                                    "--indentation"
+                                                    "--remove-surrounding-whitespace"
+                                                    "--remove-trailing-whitespace"
+                                                    "--insert-missing-whitespace"
+                                                    "--remove-consecutive-blank-lines") *command-line-args*)
+                  format-check       (shell "bb cljfmt check app/dev/src app/main/src app/test/src")
+                  format-fix         (shell "bb cljfmt fix app/dev/src app/main/src app/test/src")
+                  local-repl         (print-exec '(clojure "-M:dev:rebel"))
+                  lint               (print-exec '(clojure "-M:dev:test:clj-kondo --lint app/main --lint app/test"))
+                  log                (print-exec '(shell "tail -F logs/dev.log"))}}

@@ -1,0 +1,27 @@
+/target
+/classes
+/checkouts
+*.jar
+*.class
+/.cpcache
+/.lein-*
+/.nrepl-history
+/.nrepl-port
+pom.xml
+pom.xml.asc
+/.dir-locals.el
+
+# MacOs
+.DS_Store
+
+# Duct
+/profiles.clj
+/logs
+/app/dev/res/local.edn
+/app/dev/src/local.clj
+
+# JetBrains
+.idea/
+*.iml
+
+/.rebel_readline_history
