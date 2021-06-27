@@ -9,26 +9,18 @@ BLUE=$(printf '\033[34m')
 BOLD=$(printf '\033[1m')
 RESET=$(printf '\033[m')
 
-function uid_to_str() {
-  local name="$(echo "${1}" | jq -r '.name // ""')"
-  local comment="$(echo "${1}" | jq -r '.comment // ""')"
-  local email="$(echo "${1}" | jq -r '.email // ""')"
-  [ "${name}" == "" ] && { printf "\n${RED}%s${NC}\n%s\n" "userid has to always have name"; exit 1; }
-  local str="${name}"
-  [ "${comment}" != "" ] && str="${str} (${comment})"
-  [ "${email}" != "" ] && str="${str} <${email}>"
-  echo "${str}"
-}
-
 function gen_master_key() {
-  local output_file="$(mktemp)"
+  local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
   local passphrase="$(gpg --gen-random --armor 0 24)}"
-  local uid=$(uid_to_str "$(echo "${1}" | jq -r '.uid // ""')")
+  local uid="$(echo "${1}" | jq -r '.uid')"
   local algo="$(echo "${1}" | jq -r '.algo // ""')"
   local usage="$(echo "${1}" | jq -r '.usage // ""')"
   local expire="$(echo "${1}" | jq -r '.expire // ""')"
+  local output_file="$(mktemp)"
   set -x
-  gpg --batch --status-fd 1 --no-tty --passphrase "${passphrase}" --quick-generate-key "${uid}" "${algo}" "${usage}" "${expire}" >"${output_file}" 2>&1
+  gpg --homedir "${home_dir}" --batch --no-tty \
+      --status-fd 1  --passphrase "${passphrase}" \
+      --quick-generate-key "${uid}" "${algo}" "${usage}" "${expire}" >"${output_file}" 2>&1
   set +x
   local fingerprint="$(awk '/KEY_CREATED P/ { print $4}' "${output_file}")"
   local revocation_cert_path="$(awk '/revocation/ { print substr($6, 2, length($6)-2) }' "${output_file}")"
@@ -38,19 +30,23 @@ function gen_master_key() {
    "uid": "${uid}",
    "algo": "${algo}",
    "revocationCertPath": "${revocation_cert_path}",
-   "passphrase": "${passphrase}"}
+   "passphrase": "${passphrase}",
+   "home_dir": "${home_dir}"}
 EOF
 }
 
 function add_subkey() {
-  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local home_dir="$(echo "${1}" | jq -r '.home_dir')"
   local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
   local algo="$(echo "${2}" | jq -r '.algo')"
   local usage="$(echo "${2}" | jq -r '.usage')"
   local expire="$(echo "${2}" | jq -r '.expire')"
   local output_file="$(mktemp)"
   set -x
-  gpg --batch --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" --quick-add-key "${master_fpr}" "${algo}" "${usage}" "${expire}" >"${output_file}" 2>&1
+  gpg --homedir "${home_dir}" --batch \
+      --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" \
+      --quick-add-key "${master_fpr}" "${algo}" "${usage}" "${expire}" >"${output_file}" 2>&1
   set +x
   local fingerprint="$(awk '/KEY_CREATED S/ { print $4}' "${output_file}")"
   rm -f "${output_file}"
@@ -62,32 +58,40 @@ EOF
 }
 
 function add_uid() {
-  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
   local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
   local uid="$(echo "${2}" | jq -r '.uid')"
   local output_file="$(mktemp)"
   set -x
-  gpg --batch --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" --quick-add-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
+  gpg --homedir "${home_dir}" --batch \
+      --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" \
+      --quick-add-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
   set +x
   rm -f "${output_file}"
 }
 
 function set_primary_uid() {
+  local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
   local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
   local passphrase="$(echo "${1}" | jq -r '.passphrase')"
   local uid="$(echo "${2}" | jq -r '.uid')"
   local output_file="$(mktemp)"
   set -x
-  gpg --batch --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" --quick-set-primary-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
+  gpg --homedir "${home_dir}" --batch \
+      --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" \
+      --quick-set-primary-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
   set +x
   rm -f "${output_file}"
 }
 
 function demo() {
-  export GNUPGHOME="$(mktemp -d)"
+  unset GNUPGHOME
+  local gnupg_home="$(mktemp -d)"
 
   # create master key (cert only)
-  local master_key_params='{"uid": {"name": "Grzegorz Rynkowski"}, "algo": "rsa2048", "usage": "cert", "expire": "2090-01-01"}'
+  local master_key_params="$(echo '{"uid": "Grzegorz Rynkowski", "algo": "rsa2048", "usage": "cert", "expire": "2090-01-01"}' \
+    | jq --arg home "${gnupg_home}" '. += {"home_dir": $home}')"
   local master_key_info="$(gen_master_key "${master_key_params}")"
 
   # create subkeys
@@ -95,8 +99,9 @@ function demo() {
   local subkey_2_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "sign",    "expire": "1y"}')"
   local subkey_3_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "auth",    "expire": "1y"}')"
   # add uids
-  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <pgpme@rynkowski.pl>"}'
-  set_primary_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski"}'
+  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@example.com>"}'
+  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@domain.com>"}'
+  set_primary_uid "${master_key_info}" '{"uid": "me@example.com"}'
 
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "MASTER" "${master_key_info}"
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "SUBKEY_1" "${subkey_1_info}"
@@ -104,9 +109,45 @@ function demo() {
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "SUBKEY_3" "${subkey_3_info}"
 
   printf "\n${YELLOW}${BOLD}%s${RESET}\n" "LIST OF KEYS"
-  gpg --homedir "${GNUPGHOME}" --list-secret-keys
+  gpg --homedir "${gnupg_home}" --list-secret-keys
 
-  rm -rf "${GNUPGHOME}"
+  export fpr="$(echo "${master_key_info}" | jq -r '.fingerprint')"
+  local passphrase="$(echo "${master_key_info}" | jq -r '.passphrase')"
+
+  printf "%s\n" "-- FILES SAVED in GNUPGHOME=${gnupg_home}:"
+  tree "${gnupg_home}"
+
+#  mkdir -p ~/Desktop/g1
+#  sudo chown -R $USER ~/Desktop/g1
+#  sudo find ~/Desktop/g1 -type d -exec chmod 700 {} \;
+#  sudo find ~/Desktop/g1 -type f -exec chmod 600 {} \;
+#  cp -r "${GNUPGHOME}/pubring.kbx" "${GNUPGHOME}/trustdb.gpg" "${GNUPGHOME}/private-keys-v1.d" ~/Desktop/g1
+#  tree ~/Desktop/g1
+#  gpg --homedir ~/Desktop/g1 --list-secret-keys
+#  rm -rf "$HOME/Desktop/g1"
+#
+#  mkdir -p ~/Desktop/g2
+#  sudo chown -R $USER ~/Desktop/g2
+#  sudo find ~/Desktop/g2 -type d -exec chmod 700 {} \;
+#  sudo find ~/Desktop/g2 -type f -exec chmod 600 {} \;
+#  gpg --homedir "${GNUPGHOME}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --output "${GNUPGHOME}/sub.key" --export-secret-keys "$fpr"
+#  gpg --homedir "${GNUPGHOME}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-ownertrust > "${GNUPGHOME}/trust"
+#  gpg --homedir ~/Desktop/g2 --batch --pinentry-mode loopback --passphrase "${passphrase}" --import "${GNUPGHOME}/sub.key"
+#  gpg --homedir ~/Desktop/g2 --batch --pinentry-mode loopback --passphrase "${passphrase}" --import "${GNUPGHOME}/trust"
+#  tree ~/Desktop/g2
+#  gpg --homedir ~/Desktop/g2 --list-secret-keys
+#  rm -rf "$HOME/Desktop/g2"
+#
+#  mkdir -p ~/Desktop/g3
+#  sudo chown -R $USER ~/Desktop/g3
+#  sudo find ~/Desktop/g3 -type d -exec chmod 700 {} \;
+#  sudo find ~/Desktop/g3 -type f -exec chmod 600 {} \;
+#  gpg --homedir "${GNUPGHOME}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-subkeys "$fpr" | gpg --homedir ~/Desktop/g3 --import
+#  ls -al ~/Desktop/g3
+#  gpg --homedir ~/Desktop/g3 --list-secret-keys
+#  rm -rf "$HOME/Desktop/g3"
+
+  rm -rf "${gnupg_home}"
   set +x
 }
 
