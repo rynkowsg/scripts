@@ -61,16 +61,42 @@ function add_subkey() {
 EOF
 }
 
+function add_uid() {
+  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local uid="$(echo "${2}" | jq -r '.uid')"
+  local output_file="$(mktemp)"
+  set -x
+  gpg --batch --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" --quick-add-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
+  set +x
+  rm -f "${output_file}"
+}
+
+function set_primary_uid() {
+  local master_fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local uid="$(echo "${2}" | jq -r '.uid')"
+  local output_file="$(mktemp)"
+  set -x
+  gpg --batch --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" --quick-set-primary-uid "${master_fpr}" "${uid}" >"${output_file}" 2>&1
+  set +x
+  rm -f "${output_file}"
+}
+
 function demo() {
   export GNUPGHOME="$(mktemp -d)"
 
   # create master key (cert only)
-  local master_key_params='{"uid": {"name": "Grzegorz Rynkowski"}, "email": "grzegorz.rynkowski@gmail.com"
-                            "algo": "rsa2048", "usage": "cert", "expire": "2090-01-01"}'
+  local master_key_params='{"uid": {"name": "Grzegorz Rynkowski"}, "algo": "rsa2048", "usage": "cert", "expire": "2090-01-01"}'
   local master_key_info="$(gen_master_key "${master_key_params}")"
+
+  # create subkeys
   local subkey_1_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "encrypt", "expire": "1y"}')"
   local subkey_2_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "sign",    "expire": "1y"}')"
   local subkey_3_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "auth",    "expire": "1y"}')"
+  # add uids
+  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <pgpme@rynkowski.pl>"}'
+  set_primary_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski"}'
 
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "MASTER" "${master_key_info}"
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "SUBKEY_1" "${subkey_1_info}"
@@ -78,7 +104,7 @@ function demo() {
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "SUBKEY_3" "${subkey_3_info}"
 
   printf "\n${YELLOW}${BOLD}%s${RESET}\n" "LIST OF KEYS"
-  gpg --list-secret-keys
+  gpg --homedir "${GNUPGHOME}" --list-secret-keys
 
   rm -rf "${GNUPGHOME}"
   set +x
