@@ -110,7 +110,7 @@ sub   rsa4096 2015-06-21 [A]
 ```
 or
 ```shell
-% curl --silent https://sneak.berlin/.well-known/pgpkey.txt | gpg
+% curl -sf https://sneak.berlin/.well-known/pgpkey.txt | gpg
 # ...
 ```
 
@@ -158,3 +158,28 @@ sub   rsa4096 2021-06-27 [E] [expires: 2022-06-27]
 sub   rsa4096 2021-06-27 [S] [expires: 2022-06-27]
 sub   rsa4096 2021-06-27 [A] [expires: 2022-06-27]
 ```
+
+### preview photo attached to the key
+```shell
+## WHEN KEY IMPORTED
+% curl -sf https://sneak.berlin/.well-known/pgpkey.txt | gpg --import
+# show photo id of 0x5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+% gpg --list-options show-photos --list-key 5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+# export photo id to 0x5539AD00DE4C42F3AFE11575052443F4DF2A55C2.jpg
+% gpg --list-options show-photos --photo-viewer "cat > ./0x%f.%t" --list-key 5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+## OR WITHOUT IMPORTING
+% curl -sf https://sneak.berlin/.well-known/pgpkey.txt | gpg --list-options show-photos --list-key 5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+% curl -sf https://sneak.berlin/.well-known/pgpkey.txt | gpg --list-options show-photos --photo-viewer "cat > ./0x%f.%t" --list-key 5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+## MORE EXAMPLES
+% curl -sf https://sneak.berlin/.well-known/pgpkey.txt | gpg --list-options show-photos --list-key 5539AD00DE4C42F3AFE11575052443F4DF2A55C2
+% curl -sf https://www.preining.info/rsa.asc | gpg --list-options show-photos --list-key F7D8A92826E316A19FA0ACF06CACA448860CDC13
+% curl -sf https://gpg.pashinskikh.de/pashinskikh.asc | gpg --list-options show-photos --list-key 85E38F69046B44C1EC9FB07B76D78F0500D026C4
+```
+
+### adding a photo id
+
+- https://www.gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html
+- https://pashynskykh.com/posts/gpg/
+- https://wordpress.matbra.com/en/2012/04/12/adicionar-foto-a-chave-pgpgpg-using-gnupg/
+- https://manpages.ubuntu.com/manpages//precise/en/man1/gpg.1.html
+- https://gist.github.com/Integralist/f7e17034800b65b51eb7e9807720025a
