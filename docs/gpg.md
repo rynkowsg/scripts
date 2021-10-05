@@ -59,6 +59,12 @@ gpg --armor --output public-master-key.asc --export 2334B4E1CE62E2A2759E5DB213B7
 gpg --armor --output secret-master-key.asc --export-secret-key 2334B4E1CE62E2A2759E5DB213B73AC8E416556B
 # export to file (with paper)
 gpg --export-secret-key 2334B4E1CE62E2A2759E5DB213B73AC8E416556B | paperkey -o secret-master-key.paper.asc
+# export and print
+gpg --export-secret-key 2334B4E1CE62E2A2759E5DB213B73AC8E416556B | paperkey | lpr
+# export to QR code
+gpg --export-secret-key 2334B4E1CE62E2A2759E5DB213B73AC8E416556B | paperkey --output-type raw | qrencode --8bit --output secret-key.qr.png
+
+gpg --export-secret-key 2334B4E1CE62E2A2759E5DB213B73AC8E416556B | paperkey --output-type raw | qrencode --16bit | lpr
 ```
 
 ### import public key
@@ -176,6 +182,8 @@ sub   rsa4096 2021-06-27 [A] [expires: 2022-06-27]
 % curl -sf https://gpg.pashinskikh.de/pashinskikh.asc | gpg --list-options show-photos --list-key 85E38F69046B44C1EC9FB07B76D78F0500D026C4
 ```
 
+## Links
+
 ### adding a photo id
 
 - https://www.gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html
@@ -183,3 +191,7 @@ sub   rsa4096 2021-06-27 [A] [expires: 2022-06-27]
 - https://wordpress.matbra.com/en/2012/04/12/adicionar-foto-a-chave-pgpgpg-using-gnupg/
 - https://manpages.ubuntu.com/manpages//precise/en/man1/gpg.1.html
 - https://gist.github.com/Integralist/f7e17034800b65b51eb7e9807720025a
+
+### paper key
+
+- https://wiki.archlinux.org/title/Paperkey
