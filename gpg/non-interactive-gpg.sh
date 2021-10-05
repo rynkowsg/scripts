@@ -29,7 +29,7 @@ function gen_master_key() {
   {"fingerprint": "${fingerprint}",
    "uid": "${uid}",
    "algo": "${algo}",
-   "revocationCertPath": "${revocation_cert_path}",
+   "revocation_cert_path": "${revocation_cert_path}",
    "passphrase": "${passphrase}",
    "home_dir": "${home_dir}"}
 EOF
@@ -136,14 +136,20 @@ function gpg_demo() {
   local master_key_params="$(echo '{"uid": "Grzegorz Rynkowski", "algo": "rsa4096", "usage": "cert", "expire": "10y"}' \
     | jq --arg home "${gnupg_home}" '. += {"home_dir": $home}')"
   local master_key_info="$(gen_master_key "${master_key_params}")"
+  local revocation_cert_path="$(echo "${master_key_info}" | jq -r '.revocation_cert_path')"
 
   # add uids
   #add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@example.com>"}'
   #add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@domain.com>"}'
   #set_primary_uid "${master_key_info}" '{"uid": "me@example.com"}'
   local script_dir="$(cd "$(dirname "$([ -L "$0" ] && readlink "$0" || echo "$0")")" || exit 1; pwd -P)"
-  local photo_details="$(echo '{}' | jq --arg path "${script_dir}/gpg-photo-id.jpg" '. += {"photo_path": $path}')"
-  add_photo_id "${master_key_info}" "${photo_details}"
+  local photo_path="${script_dir}/gpg-photo-id.jpg"
+  local photo_details="$(echo '{}' | jq --arg path "${photo_path}" '. += {"photo_path": $path}')"
+  if [ -f "${photo_path}" ]; then
+    add_photo_id "${master_key_info}" "${photo_details}"
+  else
+    printf "\n${RED}Photo file in %s does not exist. Skipping addphoto...${RESET}\n" "${photo_path}"
+  fi
 
   gpg --homedir "${gnupg_home}" --list-keys
 
@@ -175,10 +181,14 @@ function gpg_demo() {
   gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-key "${fpr}" | paperkey --output "${export_dir}/private-${fpr}.paper.asc"
   gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --armor --export-secret-subkeys "${fpr}"       > "${export_dir}/private-${fpr}-subkeys.asc"
   gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-subkeys "${fpr}"               > "${export_dir}/private-${fpr}-subkeys.gpg"
+  cp "${revocation_cert_path}"                                                                                                                 "${export_dir}/revoke-${fpr}.asc"
   gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-ownertrust                            > "${export_dir}/trust"
 
   printf "%s\n" "-- FILES SAVED in GNUPGHOME=${gnupg_home}:"
   tree "${gnupg_home}"
+
+  printf "%s\n" "-- SIZE OF EXPORTS:"
+  du -sh "${gnupg_home}/exports"/*
 
   rm -rf "${gnupg_home}"
   set +x
