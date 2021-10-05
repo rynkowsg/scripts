@@ -193,3 +193,5 @@ function gpg_demo() {
   rm -rf "${gnupg_home}"
   set +x
 }
+# example:
+#   source non-interactive-gpg.sh; gpg_demo
