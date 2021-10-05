@@ -128,23 +128,29 @@ function delete_uid() {
 # example:
 #   delete_uid '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"uid_number": 2}'
 
-function demo() {
+function gpg_demo() {
   unset GNUPGHOME
   local gnupg_home="$(mktemp -d)"
 
   # create master key (cert only)
-  local master_key_params="$(echo '{"uid": "Grzegorz Rynkowski", "algo": "rsa2048", "usage": "cert", "expire": "2090-01-01"}' \
+  local master_key_params="$(echo '{"uid": "Grzegorz Rynkowski", "algo": "rsa4096", "usage": "cert", "expire": "10y"}' \
     | jq --arg home "${gnupg_home}" '. += {"home_dir": $home}')"
   local master_key_info="$(gen_master_key "${master_key_params}")"
 
-  # create subkeys
-  local subkey_1_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "encrypt", "expire": "1y"}')"
-  local subkey_2_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "sign",    "expire": "1y"}')"
-  local subkey_3_info="$(add_subkey "${master_key_info}" '{"algo": "rsa2048", "usage": "auth",    "expire": "1y"}')"
   # add uids
-  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@example.com>"}'
-  add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@domain.com>"}'
-  set_primary_uid "${master_key_info}" '{"uid": "me@example.com"}'
+  #add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@example.com>"}'
+  #add_uid "${master_key_info}" '{"uid": "Grzegorz Rynkowski <me@domain.com>"}'
+  #set_primary_uid "${master_key_info}" '{"uid": "me@example.com"}'
+  local script_dir="$(cd "$(dirname "$([ -L "$0" ] && readlink "$0" || echo "$0")")" || exit 1; pwd -P)"
+  local photo_details="$(echo '{}' | jq --arg path "${script_dir}/gpg-photo-id.jpg" '. += {"photo_path": $path}')"
+  add_photo_id "${master_key_info}" "${photo_details}"
+
+  gpg --homedir "${gnupg_home}" --list-keys
+
+  # create subkeys
+  local subkey_1_info="$(add_subkey "${master_key_info}" '{"algo": "rsa4096", "usage": "encrypt", "expire": "1y"}')"
+  local subkey_2_info="$(add_subkey "${master_key_info}" '{"algo": "rsa4096", "usage": "sign",    "expire": "1y"}')"
+  local subkey_3_info="$(add_subkey "${master_key_info}" '{"algo": "rsa4096", "usage": "auth",    "expire": "1y"}')"
 
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "MASTER" "${master_key_info}"
   printf "\n${YELLOW}${BOLD}%s${RESET}\n%s\n" "SUBKEY_1" "${subkey_1_info}"
@@ -154,8 +160,22 @@ function demo() {
   printf "\n${YELLOW}${BOLD}%s${RESET}\n" "LIST OF KEYS"
   gpg --homedir "${gnupg_home}" --list-secret-keys
 
+  printf "\n${YELLOW}${BOLD}%s${RESET}\n" "LINTER REPORT"
+  gpg --homedir "${gnupg_home}" --export | hokey lint
+
   export fpr="$(echo "${master_key_info}" | jq -r '.fingerprint')"
   local passphrase="$(echo "${master_key_info}" | jq -r '.passphrase')"
+
+  local export_dir="${gnupg_home}/exports"
+  mkdir -p "${export_dir}"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export                                       > "${export_dir}/public-${fpr}-$(date +%F).gpg"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --armor --export                               > "${export_dir}/public-${fpr}-$(date +%F).asc"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-key "${fpr}"                   > "${export_dir}/private-${fpr}.gpg"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --armor --export-secret-key "${fpr}"           > "${export_dir}/private-${fpr}.asc"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-key "${fpr}" | paperkey --output "${export_dir}/private-${fpr}.paper.asc"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --armor --export-secret-subkeys "${fpr}"       > "${export_dir}/private-${fpr}-subkeys.asc"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-secret-subkeys "${fpr}"               > "${export_dir}/private-${fpr}-subkeys.gpg"
+  gpg --homedir "${gnupg_home}" --batch --pinentry-mode loopback --passphrase "${passphrase}" --export-ownertrust                            > "${export_dir}/trust"
 
   printf "%s\n" "-- FILES SAVED in GNUPGHOME=${gnupg_home}:"
   tree "${gnupg_home}"
@@ -194,7 +214,7 @@ function demo() {
   set +x
 }
 
-demo
+#gpg_demo
 
 # FAQ
 # ---
