@@ -183,8 +183,8 @@ demo
 # on non-interactive mode:
 # - https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html
 # - https://raymii.org/s/articles/GPG_noninteractive_batch_sign_trust_and_send_gnupg_keys.html
-# - http://gnupg.10057.n7.nabble.com/Please-fix-batch-mode-for-gpg-edit-key-trust-td48162.html
-# - http://gnupg.10057.n7.nabble.com/gpg-batch-yes-edit-key-trust-td11463.html
+# - http://gnupg.10057.n7.nabble.com/Please-fix-batch-mode-for-gpg-edit-key-trust-td48162.html (https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056361.html)
+# - http://gnupg.10057.n7.nabble.com/gpg-batch-yes-edit-key-trust-td11463.html  (https://lists.gnupg.org/pipermail/gnupg-users/2010-July/039213.html, https://web.archive.org/web/20201010065002/http://gnupg.10057.n7.nabble.com/gpg-batch-yes-edit-key-trust-td11463.html)
 # - https://stackoverflow.com/questions/56582016/gpg-change-passphrase-non-interactively/65516333#65516333
 #
 # edit-key
