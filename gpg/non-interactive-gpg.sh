@@ -34,6 +34,9 @@ function gen_master_key() {
    "home_dir": "${home_dir}"}
 EOF
 }
+# example:
+#    gen_master_key '{"fingerprint": "Grzegorz Rynkowski", "algo": "rsa4096", "usage": "cert", "expire": "2090-01-01"}'
+#    gen_master_key '{"uid": "Grzegorz Rynkowski", "algo": "rsa4096", "usage": "cert", "expire": "2090-01-01", "home_dir": "/Users/greg/.gnupg"}'
 
 function add_subkey() {
   local home_dir="$(echo "${1}" | jq -r '.home_dir')"
@@ -56,6 +59,10 @@ function add_subkey() {
    "fingerprint": "${fingerprint}"}
 EOF
 }
+# example:
+#    add_subkey '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"algo": "rsa2048", "usage": "encrypt", "expire": "1y"}'
+#    add_subkey '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"algo": "rsa2048", "usage": "sign", "expire": "1y"}'
+#    add_subkey '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"algo": "rsa2048", "usage": "auth", "expire": "1y"}'
 
 function add_uid() {
   local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
@@ -70,6 +77,8 @@ function add_uid() {
   set +x
   rm -f "${output_file}"
 }
+# example:
+#    add_uid '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"uid": "Grzegorz Rynkowski <me@example.com>"}'
 
 function set_primary_uid() {
   local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
@@ -84,6 +93,8 @@ function set_primary_uid() {
   set +x
   rm -f "${output_file}"
 }
+# example:
+#    add_uid '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"uid": "me@example.com"}'
 
 function demo() {
   unset GNUPGHOME
