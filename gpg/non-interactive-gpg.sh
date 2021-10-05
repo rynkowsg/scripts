@@ -96,6 +96,38 @@ function set_primary_uid() {
 # example:
 #    add_uid '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"uid": "me@example.com"}'
 
+function add_photo_id() {
+  local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
+  local fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local photo_path="$(echo "${2}" | jq -r '.photo_path')"
+  local output_file="$(mktemp)"
+  set -x
+  printf "${photo_path}\n" | gpg --homedir "${home_dir}" --batch --command-fd 0 \
+       --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" \
+       --edit-key "${fpr}" addphoto save quit >"${output_file}" 2>&1
+  set +x
+  rm -f "${output_file}"
+}
+# example:
+#    add_photo_id '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"photo_path": "/Users/greg/Desktop/photoid.jpg"}'
+
+function delete_uid() {
+  local home_dir="$(echo "${1}" | jq -r ".home_dir // \"${GNUPGHOME}\"")"
+  local fpr="$(echo "${1}" | jq -r '.fingerprint')"
+  local passphrase="$(echo "${1}" | jq -r '.passphrase')"
+  local uid_number="$(echo "${2}" | jq -r '.uid_number')"
+  local output_file="$(mktemp)"
+  set -x
+  printf "yes\n" | gpg --homedir "${home_dir}" --batch --command-fd 0 \
+       --status-fd 1 --pinentry-mode loopback --passphrase "${passphrase}" \
+       --edit-key "${fpr}" uid ${uid_number} deluid save quit >"${output_file}" 2>&1
+  set +x
+  rm -f "${output_file}"
+}
+# example:
+#   delete_uid '{"fingerprint": "45F3 A137 E00E B692 4E43  9BA8 5233 64D1 E23B 68F7", "passphrase": "", "home_dir": "/Users/greg/.gnupg"}' '{"uid_number": 2}'
+
 function demo() {
   unset GNUPGHOME
   local gnupg_home="$(mktemp -d)"
