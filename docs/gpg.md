@@ -195,3 +195,18 @@ sub   rsa4096 2021-06-27 [A] [expires: 2022-06-27]
 ### paper key
 
 - https://wiki.archlinux.org/title/Paperkey
+
+- idea how to split paper key into separate files:
+  http://blog.cyphermox.net/2018/03/backing-up-gpg-keys.html
+
+  backup:
+
+      cat printme.txt | split -b 1500 - part-
+      rm printme.txt
+      for part in part-*; do
+      dmtxwrite -e 8 ${part} > ${part}.png
+      done
+
+  restore:
+
+      for file in *.png; do dmtxread $file >> printme.txt; done
